@@ -1,6 +1,6 @@
 <html>
    	<head>
-      	<script type = "text/javascript" src = "d3.v4.min.js"></script>
+      	<script type = "text/javascript" src = "https://github.com/yashkapoor1/D3CHART/blob/trunk/d3.v4.min.js"></script>
       	<style>
         	svg text {
 	            fill: purple;
@@ -71,7 +71,7 @@
 				var stationCode = [];
 				var timeLenghtArr = [];
 				 		 
-				d3.csv("PlottingData16519610.csv", function(error, data) {
+				d3.csv("https://github.com/yashkapoor1/D3CHART/blob/trunk/PlottingData165196.csv", function(error, data) {
 					data.sort(function(a, b) {
 						return d3.descending(+a.distance, +b.distance);
 	    			});
