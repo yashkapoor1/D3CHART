@@ -1,0 +1,354 @@
+<html>
+   	<head>
+      	<script type = "text/javascript" src = "https://d3js.org/d3.v4.min.js"></script>
+      	<style>
+        	svg text {
+	            fill: purple;
+	            font: 12px sans-serif;
+	            text-anchor: end;
+         	}
+		 
+			body { font: 12px Arial;}
+		
+			.grid line {
+	  			stroke: lightgrey;
+	 		 	stroke-width: 0.5;
+	  			shape-rendering: crispEdges;
+			}
+			
+			.grid hourline {
+	  			stroke: lightgrey;
+	 		 	stroke-width: 0.5;
+	  			shape-rendering: crispEdges;
+			}
+			
+			.g yaxisdistancescale
+			{
+				stroke: lightgrey;
+	 		 	stroke-width: 0.5;
+	  			shape-rendering: crispEdges; 
+			}
+			
+			.grid path {
+	  			stroke-width: 0;
+			}
+			
+			.line{
+			  stroke-width: 1px;  
+			}
+			
+			path { 
+			   /* stroke: steelblue;*/
+			    stroke-width: 1;
+			    fill: none;
+			}
+			
+			.axis path,
+			.axis line {
+			    fill: none;
+			    stroke: lightgrey;
+			    stroke-width: 0.5;
+			    shape-rendering: crispEdges;
+			}
+      	</style>
+   	</head>
+
+   	<body>
+	
+		<div id="option">
+		    <input name="plotChartButton" type="button" value="Click to Plot chart" onclick="updateData()" />
+		</div>
+
+      	<script>
+		var isFunctionLoaded = false;
+		
+		function updateData() {
+			var t0 = performance.now();
+			
+			if(isFunctionLoaded == false)
+				{
+				var distanceArr = [];
+				var stationCode = [];
+				var timeLenghtArr = [];
+				 		 
+				d3.csv("PlottingData16519610.csv", function(error, data) {
+					data.sort(function(a, b) {
+						return d3.descending(+a.distance, +b.distance);
+	    			});
+						
+		        	data.forEach(function(d) {	
+		        		distanceArr.push(d.distance);
+						d.distance = d.distance;
+						stationCode.push(d.stationcode);				
+						d.arrivaltime = d3.timeParse("%I:%M")(secondsToHms(d.arrivaltime));		
+						d.departuretime = d3.timeParse("%I:%M")(secondsToHms(d.departuretime));
+						timeLenghtArr.push(d.arrivaltime);
+						d.trainid = d.trainid;
+		    		});
+				
+				//var t = d3.ascending(distanceArr);
+				//sorteddata = data.slice().sort((a, b) => d3.ascending(a.distance, b.distance))
+				//stationCode.sort().reverse();
+				
+				// Set the dimensions of the canvas / graph
+				var margin = {top: 30, right: 20, bottom: 70, left: 50},
+				    width = 1900 - margin.left - margin.right,
+				    height = 600 - margin.top - margin.bottom;
+				
+				var uniqueDistanceArr = d3.set(distanceArr).values();
+				debugger;
+				height = (uniqueDistanceArr.length * 30)/2;
+				width = timeLenghtArr.length * 60;
+				if(distanceArr.length > 1000)
+					{
+				 		height = uniqueDistanceArr.length/2;
+						width = distanceArr.length/2;
+				 	}
+					
+				var svg = d3.select("body")
+		            .append("svg")            
+			        .attr("width", width + margin.left + margin.right)
+			        .attr("height", height + margin.top + margin.bottom)
+			    	.append("g")
+			        .attr("transform", 
+			              "translate(" + margin.left + "," + margin.top + ")");
+				debugger;
+				var xscale =  d3
+					.scaleTime()
+		    		//.domain([d3.timeParse("%I:%M")("04:00"), d3.timeParse("%I:%M")("05:30")])
+					//.domain(d3.min(data, function(d){return d.departuretime;}))
+					.domain([d3.min(data, d => d.arrivaltime), d3.max(data, d => d.departuretime)])
+					//.domain([d3.timeParse("%I:%M")("00:00"), d3.max(data, function(d){ return d.departuretime;})])
+		    		.range([0, width-200]);
+		         
+		         //var xscale = d3.scalePoint()
+		            //.domain(time)	//input
+		            //.range([0, width - 300]);	//output
+		         
+		         var yscale = d3.scaleLinear()
+		            .domain([d3.max(data, d => d.distance), d3.min(data, d => d.distance)])	//input
+					//for large data
+					//.range([height/2.5, 0]);	//output
+					
+					//for 165196 data
+		            .range([height, 0]);	//output
+					
+				//var yscaleStationCode = d3.scaleOrdinal()
+					//.domain(stationCode)
+		    		//.range([height, 0]);
+					
+		        var x_axisMinute = d3.axisTop().scale(xscale).ticks(d3.timeMinute.every(10)).tickFormat(d3.timeFormat("%M"));
+				
+				var x_axisHour = d3.axisTop().scale(xscale).ticks(d3.timeHour.every(1)).tickFormat(d3.timeFormat("%H"));
+		         
+		        var y_axis = d3.axisLeft().scale(yscale).tickValues(distanceArr).tickFormat(function (d){return d3.format(".2f")(d/1); });
+				 
+				//var y_axisStationCode = d3.axisLeft().scale(yscale).tickValues(stationCode).tickFormat(function (d, i){ });
+				 
+				var lines = [];
+				// Horizontal line
+				//data.forEach(function(d) {				
+	        	//	lines.push([{ x:d.arrivaltime, y:d.distance}, {x:d.departuretime, y:d.distance}])
+	    		//});
+					
+				var line = d3.line()
+		   			.x(function(d) { return xscale(d.x); })
+				   	.y(function(d) { return yscale(d.y); });
+				   	
+				 //valueline
+				var valueline = d3.line()
+			    	.x(function(d) { return xscale(d.arrivaltime); })   
+			    	.y(function(d) { return yscale(d.distance); });
+		
+				var valueline2 = d3.line()
+			    	.x(function(d) { return xscale(d.departuretime); })   
+			    	.y(function(d) { return yscale(d.distance); });
+					
+				var valueline3 = d3.line()
+			    	.x(function(d) { return valueline(d); })   
+			    	.y(function(d) { return valueline2(d); });
+		         
+		        //svg.append("g")
+		            //.attr("transform", "translate(194, 10)")
+		            //.call(y_axisStationCode);
+		         
+				svg.append("g")
+		            .attr("transform", "translate(152, 10)")
+					.attr("class", "grid")
+		            .call(y_axis);
+				
+				// To change axisbottom to asixTop
+		        var xAxisTranslate = 0 + 10;
+				
+				// To change axisTop to asixBottom
+				//var xAxisTranslate = height + 10;
+		         
+		        svg.append("g")
+		            .attr("transform", "translate(194, " + xAxisTranslate  +")")
+		            .call(x_axisMinute);
+					
+					svg.append("g")
+		            .attr("transform", "translate(194, " + xAxisTranslate  +")")
+		            .call(x_axisHour);
+				
+				// Nest the entries by symbol
+			    var dataNest = d3.nest()
+			        .key(function(d) {return d.trainid;})
+			        .entries(data);
+			
+			    var color = d3.scaleOrdinal(d3.schemeCategory10);   // set the cold3.schemeCategory10our scale
+			
+			    legendSpace = width/dataNest.length; // spacing for legend
+			
+			    // Loop through each symbol / key
+			    dataNest.forEach(function(d,j) {
+				//	d.values.sort(function(a, b) {
+	        	//		return d3.descending(+a.distance, +b.distance)
+	    		//	});
+				// uncomment to show departure line
+		        //svg.append("path")
+		        //    .attr("class", "line")
+				//	.attr("transform", "translate(194, 10)")
+		        //    .style("stroke", function() { // Add the colours dynamically
+		        //      	return d.color = color(d.key); })
+		        //    .attr("d", valueline(d.values));
+				
+				// uncomment to show arrival line	
+				//svg.append("path")
+		        //    .attr("class", "line")
+				//	.attr("transform", "translate(194, 10)")
+		        //    .style("stroke", function() { // Add the colours dynamically
+		        //       	return d.color = color(d.key); })
+		        //    .attr("d", valueline2(d.values));
+				//Vertical lines
+				if(j/2 == 0 || j/2 == 1)
+				{
+					for(i=0;i<d.values.length-1;i++)
+					{
+						//Vertical lines
+						lines.push([{ x:d.values[i].departuretime, y:d.values[i].distance}, {x:d.values[i+1].arrivaltime, y:d.values[i+1].distance}])
+						
+						// Horizontal line
+						lines.push([{ x:d.values[i].arrivaltime, y:d.values[i].distance}, {x:d.values[i].departuretime, y:d.values[i].distance}])
+					}
+				}	
+				else
+				{
+					for(i=0;i<d.values.length-1;i++)
+					{
+						//Vertical lines
+						lines.push([{ x:d.values[i].arrivaltime, y:d.values[i].distance}, {x:d.values[i+1].departuretime, y:d.values[i+1].distance}])
+						
+						// Horizontal line
+						lines.push([{ x:d.values[i].arrivaltime, y:d.values[i].distance}, {x:d.values[i].departuretime, y:d.values[i].distance}])
+					}
+				}
+					
+				svg.selectAll(".line")
+				   .data(lines)
+				   .enter().append("path")
+				   .attr("class", "line")
+				   .attr("transform", "translate(194, 10)")
+				   .style("stroke", function() { // Add the colours dynamically
+		              	return d.color = color(d.key); })
+				   .attr("d", line);	
+				
+		        // Add the Legend
+		        //svg.append("text")
+		         //   .attr("x", (legendSpace/2)+i*legendSpace) // spacing
+		        //    .attr("y", height + (margin.bottom/2)+ 5)
+				//	.attr("transform", "translate(194, 10)")
+		        //    .attr("class", "legend")    // style the legend
+		        //    .style("fill", function() { // dynamic colours
+		        //        return d.color = color(d.key); })
+		        //    .text(d.key);
+			    });			
+			
+				// add the X gridlines
+			 	svg.append("g")			
+			      .attr("class", "grid")
+			      .attr("transform", "translate(193," + 0 + ")")
+			      .call(make_x_gridlines()
+			          .tickSize(-height)
+			          .tickFormat("")
+					  .ticks(d3.timeMinute.every(10))
+			      )
+				  
+				// add the X gridlines
+			 	svg.append("g")			
+			      .attr("class", "hourline")
+				  //to change axistop to axisbottom (top to bottom)
+				  //.attr("transform", "translate(193," + (height + 10) + ")")
+				  
+				  //to change axisBottom to axisTop (Bottom to top)
+			      .attr("transform", "translate(193," + (0 + 10) + ")")
+			      .call(make_x_gridlines()
+			          .tickSize(-height)
+			          .tickFormat("")
+					  .ticks(d3.timeHour.every(1))
+			      )
+			
+			  	// add the Y gridlines
+			  	svg.append("g")			
+			   	.attr("class", "grid")
+				.attr("transform", "translate(0," + 10 + ")")
+				.style("stroke-dasharray", ("3, 3"))
+			      	.call(make_y_gridlines()
+			          .tickSize(-width)
+			          .tickFormat("")
+			      )		
+				  
+				// gridlines in x axis function 
+				function make_x_gridlines() { return d3.axisTop(xscale); }
+			
+				// gridlines in y axis function
+				function make_y_gridlines() { return d3.axisLeft(yscale).tickValues(distanceArr); }
+				    
+				//svg.selectAll("circles")
+				    //.data(data)
+				    //.enter()
+				    //.append("circle")
+				   // .attr("cx", function (d) { return xscale(d.departuretime); })
+				   // .attr("cy", function (d) { return yscale(d.distance); })
+				   // .attr("r", 2)
+					//.attr("transform", "translate(194, 10)")
+				   // .attr("fill", "blue");
+					
+				//svg.selectAll("circles")
+				  //  .data(data)
+				  //  .enter()
+				 //   .append("circle")
+				 //   .attr("cx", function (d) { return xscale(d.arrivaltime); })
+				 //   .attr("cy", function (d) { return yscale(d.distance); })
+				 //   .attr("r", 2)
+				//	.attr("transform", "translate(194, 10)")
+				//    .attr("fill", "red");
+				var t1 = performance.now();
+				alert("Plotting time: " + millisToMinutesAndSeconds(t1 - t0) );
+				});
+				
+				isFunctionLoaded = true;
+				}
+			}
+			
+			//Functon
+			function secondsToHms(d) {
+			    d = Number(d);
+			    var h = Math.floor(d / 3600);
+			    var m = Math.floor(d % 3600 / 60);
+			    //var s = Math.floor(d % 3600 % 60);
+			
+			    var hDisplay = h > 0 ? h + (h == 1 ? ":" : ":") : "";
+			    var mDisplay = m > 0 ? m + (m == 1 ? "" : "") : "00";
+			    //var sDisplay = s > 0 ? s + (s == 1 ? " " : " ") : "";
+			    return ( hDisplay + mDisplay ); 
+			}
+			
+			function millisToMinutesAndSeconds(millis) {
+				var minutes = Math.floor(millis / 60000);
+				var seconds = ((millis % 60000) / 1000).toFixed(0);
+				return minutes + ":" + (seconds < 10 ? '0' : '') + seconds;
+			}
+      	</script>
+   	</body>
+</html>
